@@ -1,0 +1,9 @@
+region,network,agency,typical_usvh,range_low_usvh,range_high_usvh,dose_component,citation
+World,UNSCEAR outdoor gamma,UNSCEAR,0.058,0.03,0.10,total,UNSCEAR typical outdoor absorbed dose rate around 58 nGy/h
+United States,EPA RadNet typical,US EPA,0.10,0.03,0.30,dose equivalent,EPA RadNet typical outdoor dose equivalent discussion
+Germany,BfS ODL typical,BfS,0.09,0.05,0.18,total,BfS ODL-Info ambient dose rate network
+Canada,Health Canada FPS terrestrial typical,Health Canada,0.035,0.02,0.08,terrestrial,Health Canada FPS terrestrial gamma
+Finland,STUK external typical,STUK,0.12,0.07,0.20,total,STUK outdoor dose-rate network
+Japan,NRA typical outdoor,NRA,0.05,0.03,0.10,total,Typical Japanese outdoor gamma background
+Australia,ARPANSA typical,ARPANSA,0.07,0.05,0.10,total,ARPANSA monitoring network typical range
+United Kingdom,UK typical outdoor,UK,0.10,0.05,0.15,total,Typical UK outdoor gamma background
