@@ -1,18 +1,18 @@
-<dashboard version="2" theme="light">
+<dashboard version="2" theme="dark">
   <label>Background Radiation</label>
-  <description>Home Geiger readings compared with public government radiation networks</description>
+  <description>Home Geiger readings compared with live public government radiation networks</description>
   <definition><![CDATA[
 {
   "title": "Background Radiation",
-  "description": "Home Geiger readings compared with public government radiation networks",
+  "description": "Home Geiger readings compared with live public government radiation networks",
   "inputs": {
     "input_global_trp": {
+      "type": "input.timerange",
+      "title": "Time range",
       "options": {
-        "defaultValue": "-24h@h,now",
-        "token": "global_time"
-      },
-      "title": "Global Time Range",
-      "type": "input.timerange"
+        "token": "global_time",
+        "defaultValue": "-24h@h,now"
+      }
     }
   },
   "defaults": {
@@ -24,504 +24,1297 @@
             "latest": "$global_time.latest$"
           }
         }
-      },
-      "ds.spl2": {
-        "options": {
-          "queryParameters": {
-            "earliest": "$global_time.earliest$",
-            "latest": "$global_time.latest$"
-          }
-        }
       }
     }
   },
   "visualizations": {
-    "viz_home_md": {
+    "md_home_head": {
       "type": "splunk.markdown",
       "options": {
-        "markdown": "### Home sensor\nLocal monitor from `index=radsensor` (`cpm` and `usvh`). Government feeds are stored as `sourcetype=gov:radiation:json` and excluded here."
+        "markdown": "## Home sensor\nYour Geiger counter in `index=radsensor`, averaged into 10-minute intervals for the selected time range.",
+        "fontColor": "#8B9BB4"
       }
     },
-    "viz_home_line": {
+    "sv_home_latest": {
+      "type": "splunk.singlevalue",
+      "title": "Latest dose rate",
       "dataSources": {
-        "primary": "ds_home_line"
+        "primary": "ds_home_usvh_spark"
       },
       "options": {
-        "dataValuesDisplay": "minmax",
-        "nullValueDisplay": "connect"
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 4,
+        "majorFontSize": 40,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "unit": "µSv/h",
+        "unitPosition": "after",
+        "sparklineStrokeColor": "#36CFC9",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)"
       },
-      "title": "Home CPM and uSv/h",
-      "type": "splunk.line"
+      "context": {
+        "majorColorConfig": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ]
+      }
     },
-    "viz_home_cpm": {
+    "sv_home_cpm": {
+      "type": "splunk.singlevalue",
+      "title": "Latest count rate",
       "dataSources": {
-        "primary": "ds_home_cpm"
+        "primary": "ds_home_cpm_spark"
       },
       "options": {
-        "numberPrecision": 1
-      },
-      "title": "Home CPM",
-      "type": "splunk.singlevalue"
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 1,
+        "majorFontSize": 40,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "unit": "CPM",
+        "unitPosition": "after",
+        "sparklineStrokeColor": "#36CFC9",
+        "majorColor": "#E6EDF3"
+      }
     },
-    "viz_home_usvh": {
+    "sv_home_avg": {
+      "type": "splunk.singlevalue",
+      "title": "Average in range",
       "dataSources": {
-        "primary": "ds_home_usvh"
+        "primary": "ds_home_avg"
       },
       "options": {
-        "numberPrecision": 4
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 4,
+        "majorFontSize": 40,
+        "trendDisplay": "off",
+        "sparklineDisplay": "off",
+        "unit": "µSv/h",
+        "unitPosition": "after",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)"
       },
-      "title": "Home uSv/h",
-      "type": "splunk.singlevalue"
+      "context": {
+        "majorColorConfig": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ]
+      }
     },
-    "viz_home_latest_cpm": {
+    "sv_home_peak": {
+      "type": "splunk.singlevalue",
+      "title": "Peak 10-minute average",
       "dataSources": {
-        "primary": "ds_home_latest_cpm"
+        "primary": "ds_home_peak"
       },
       "options": {
-        "numberPrecision": 1
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 4,
+        "majorFontSize": 40,
+        "trendDisplay": "off",
+        "sparklineDisplay": "off",
+        "unit": "µSv/h",
+        "unitPosition": "after",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)"
       },
-      "title": "Latest CPM",
-      "type": "splunk.singlevalue"
+      "context": {
+        "majorColorConfig": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ]
+      }
     },
-    "viz_home_latest_usvh": {
+    "sv_home_annual": {
+      "type": "splunk.singlevalue",
+      "title": "Annualized dose",
       "dataSources": {
-        "primary": "ds_home_latest_usvh"
+        "primary": "ds_home_annual"
       },
       "options": {
-        "numberPrecision": 4
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 2,
+        "majorFontSize": 40,
+        "trendDisplay": "off",
+        "sparklineDisplay": "off",
+        "unit": "mSv/yr",
+        "unitPosition": "after",
+        "underLabel": "world average ~2.4 mSv/yr (all sources)",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)"
       },
-      "title": "Latest uSv/h",
-      "type": "splunk.singlevalue"
+      "context": {
+        "majorColorConfig": [
+          {
+            "to": 1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 1,
+            "to": 2.4,
+            "value": "#FADB14"
+          },
+          {
+            "from": 2.4,
+            "to": 6,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 6,
+            "value": "#FF4D4F"
+          }
+        ]
+      }
     },
-    "viz_world_md": {
+    "gauge_home": {
+      "type": "splunk.markergauge",
+      "title": "Where home sits on the background scale (µSv/h)",
+      "dataSources": {
+        "primary": "ds_home_latest"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "orientation": "horizontal",
+        "gaugeRanges": [
+          {
+            "from": 0,
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          }
+        ],
+        "labelDisplay": "number",
+        "valueDisplay": "number"
+      }
+    },
+    "area_home": {
+      "type": "splunk.area",
+      "title": "Dose rate over time (µSv/h, 10-minute average)",
+      "dataSources": {
+        "primary": "ds_home_area"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#36CFC9"
+        ],
+        "areaOpacity": 0.35,
+        "nullValueDisplay": "connect",
+        "yAxisTitleText": "µSv/h"
+      }
+    },
+    "line_home_cpm": {
+      "type": "splunk.line",
+      "title": "Count rate over time (CPM)",
+      "dataSources": {
+        "primary": "ds_home_cpm_line"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#FFA940"
+        ],
+        "nullValueDisplay": "connect",
+        "yAxisTitleText": "CPM"
+      }
+    },
+    "col_home_hourly": {
+      "type": "splunk.column",
+      "title": "Average by hour of day (µSv/h)",
+      "dataSources": {
+        "primary": "ds_home_hourly"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "show",
+        "seriesColors": [
+          "#4C9AFF"
+        ],
+        "xAxisTitleText": "Hour"
+      }
+    },
+    "col_home_hist": {
+      "type": "splunk.column",
+      "title": "How often each level occurs (10-minute intervals per µSv/h band)",
+      "dataSources": {
+        "primary": "ds_home_hist"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "seriesColors": [
+          "#B37FEB"
+        ]
+      }
+    },
+    "md_home_scale": {
       "type": "splunk.markdown",
       "options": {
-        "markdown": "### World vs home\nLive public networks: **Germany BfS ODL-Info** (total ambient uSv/h), **Health Canada FPS** (terrestrial nSv/h converted to uSv/h), **Finland STUK** (outdoor uSv/h). Canada is terrestrial-only, so it usually reads lower than total-dose networks. Typical published ranges are in the lookup table."
+        "markdown": "### Reading the numbers\n| Dose rate | What it means |\n|---|---|\n| **< 0.10 µSv/h** | Typical outdoor background in most places |\n| **0.10 – 0.20** | Normal for granite areas, altitude, or brick/stone buildings |\n| **0.20 – 0.50** | Elevated background; worth a second look |\n| **> 0.50** | Unusual for background; check the sensor and surroundings |\n\nIndoor Geiger counters often read differently from outdoor government monitors. 1 µSv/h for a full year is 8.76 mSv.",
+        "fontColor": "#E6EDF3"
       }
     },
-    "viz_world_home": {
+    "md_world_head": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "## Live world vs home\nLatest reading per station from public government networks: Germany, Finland, Austria, Switzerland (daily mean), Japan, Australia, United States (hourly) and Canada (terrestrial only, so it reads lower).",
+        "fontColor": "#8B9BB4"
+      }
+    },
+    "sv_w_home": {
+      "type": "splunk.singlevalue",
+      "title": "Home latest",
       "dataSources": {
-        "primary": "ds_home_latest_usvh"
+        "primary": "ds_home_usvh_spark"
       },
       "options": {
-        "numberPrecision": 4
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 4,
+        "majorFontSize": 40,
+        "trendDisplay": "absolute",
+        "sparklineDisplay": "below",
+        "unit": "µSv/h",
+        "unitPosition": "after",
+        "sparklineStrokeColor": "#36CFC9",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)"
       },
-      "title": "Home latest uSv/h",
-      "type": "splunk.singlevalue"
+      "context": {
+        "majorColorConfig": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ]
+      }
     },
-    "viz_world_median": {
+    "sv_w_world": {
+      "type": "splunk.singlevalue",
+      "title": "World median",
       "dataSources": {
         "primary": "ds_world_median"
       },
       "options": {
-        "numberPrecision": 4
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 4,
+        "majorFontSize": 40,
+        "trendDisplay": "off",
+        "sparklineDisplay": "off",
+        "unit": "µSv/h",
+        "unitPosition": "after",
+        "underLabel": "median of country medians",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)"
       },
-      "title": "Live world median uSv/h",
-      "type": "splunk.singlevalue"
+      "context": {
+        "majorColorConfig": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ]
+      }
     },
-    "viz_world_delta": {
+    "sv_w_delta": {
+      "type": "splunk.singlevalue",
+      "title": "Home − world",
       "dataSources": {
         "primary": "ds_home_vs_world"
       },
       "options": {
-        "numberPrecision": 4
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 4,
+        "majorFontSize": 40,
+        "trendDisplay": "off",
+        "sparklineDisplay": "off",
+        "unit": "µSv/h",
+        "unitPosition": "after",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)"
       },
-      "title": "Home minus world median",
-      "type": "splunk.singlevalue"
+      "context": {
+        "majorColorConfig": [
+          {
+            "to": -0.03,
+            "value": "#4C9AFF"
+          },
+          {
+            "from": -0.03,
+            "to": 0.03,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.03,
+            "to": 0.1,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.1,
+            "value": "#FF4D4F"
+          }
+        ]
+      }
     },
-    "viz_world_ratio": {
+    "sv_w_ratio": {
+      "type": "splunk.singlevalue",
+      "title": "Home ÷ world",
       "dataSources": {
         "primary": "ds_home_vs_world_ratio"
       },
       "options": {
-        "numberPrecision": 2
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 2,
+        "majorFontSize": 40,
+        "trendDisplay": "off",
+        "sparklineDisplay": "off",
+        "unit": "×",
+        "unitPosition": "after",
+        "majorColor": "> majorValue | rangeValue(majorColorConfig)"
       },
-      "title": "Home / world median",
-      "type": "splunk.singlevalue"
+      "context": {
+        "majorColorConfig": [
+          {
+            "to": 0.67,
+            "value": "#4C9AFF"
+          },
+          {
+            "from": 0.67,
+            "to": 1.5,
+            "value": "#52C41A"
+          },
+          {
+            "from": 1.5,
+            "to": 3,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 3,
+            "value": "#FF4D4F"
+          }
+        ]
+      }
     },
-    "viz_world_bar": {
+    "sv_w_countries": {
+      "type": "splunk.singlevalue",
+      "title": "Countries live",
       "dataSources": {
-        "primary": "ds_compare_bar"
-      },
-      "options": {},
-      "title": "Home vs government network medians (uSv/h)",
-      "type": "splunk.column"
-    },
-    "viz_world_line": {
-      "dataSources": {
-        "primary": "ds_compare_time"
+        "primary": "ds_live_countries"
       },
       "options": {
-        "nullValueDisplay": "connect"
-      },
-      "title": "Home vs government medians over time",
-      "type": "splunk.line"
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 0,
+        "majorFontSize": 40,
+        "trendDisplay": "off",
+        "sparklineDisplay": "off",
+        "majorColor": "#E6EDF3"
+      }
     },
-    "viz_world_table": {
+    "sv_w_stations": {
+      "type": "splunk.singlevalue",
+      "title": "Stations live",
       "dataSources": {
-        "primary": "ds_network_table"
+        "primary": "ds_live_stations"
       },
       "options": {
-        "count": 20
-      },
-      "title": "Network summaries vs home",
-      "type": "splunk.table"
+        "backgroundColor": "#131D2E",
+        "numberPrecision": 0,
+        "majorFontSize": 40,
+        "trendDisplay": "off",
+        "sparklineDisplay": "off",
+        "majorColor": "#E6EDF3"
+      }
     },
-    "viz_typical_table": {
+    "sv_w_status": {
+      "type": "splunk.singlevalue",
       "dataSources": {
-        "primary": "ds_typical"
+        "primary": "ds_compare_status"
       },
       "options": {
-        "count": 20
+        "backgroundColor": "#131D2E",
+        "majorFontSize": 26,
+        "majorColor": "> majorValue | matchValue(statusColors)"
       },
-      "title": "Published typical outdoor background (uSv/h)",
-      "type": "splunk.table"
+      "context": {
+        "statusColors": [
+          {
+            "match": "Home reads HIGHER than the live world median",
+            "value": "#FA8C16"
+          },
+          {
+            "match": "Home reads LOWER than the live world median",
+            "value": "#4C9AFF"
+          },
+          {
+            "match": "Home is in line with the live world median",
+            "value": "#52C41A"
+          },
+          {
+            "match": "Waiting for government feeds",
+            "value": "#8B9BB4"
+          },
+          {
+            "match": "Waiting for home sensor",
+            "value": "#8B9BB4"
+          }
+        ]
+      }
     },
-    "viz_stations": {
-      "dataSources": {
-        "primary": "ds_stations"
-      },
-      "options": {
-        "count": 20
-      },
-      "title": "Highest live government stations",
-      "type": "splunk.table"
-    },
-    "viz_map": {
+    "map_world": {
+      "type": "splunk.map",
+      "title": "Live government stations",
       "dataSources": {
         "primary": "ds_map"
       },
       "options": {
+        "backgroundColor": "#131D2E",
         "center": [
-          10,
-          30
+          35,
+          10
         ],
-        "zoom": 2
+        "zoom": 1.6,
+        "layers": [
+          {
+            "type": "marker",
+            "latitude": "> primary | seriesByName('lat')",
+            "longitude": "> primary | seriesByName('lon')",
+            "dataColors": "> primary | seriesByName('usvh') | rangeValue(markerColors)",
+            "additionalTooltipFields": [
+              "station_name",
+              "country",
+              "usvh",
+              "source_network"
+            ]
+          }
+        ]
       },
-      "title": "Government stations (uSv/h)",
-      "type": "splunk.map"
+      "context": {
+        "markerColors": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ]
+      }
     },
-    "viz_compare_status": {
+    "md_map_legend": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "Marker colors: 🟢 under 0.1 · 🟡 0.1–0.2 · 🟠 0.2–0.5 · 🔴 0.5–1 · 🟣 over 1 µSv/h. Hover a marker for the station.",
+        "fontColor": "#8B9BB4"
+      }
+    },
+    "bar_rank": {
+      "type": "splunk.bar",
+      "title": "Countries ranked, with home (µSv/h)",
       "dataSources": {
-        "primary": "ds_compare_status"
+        "primary": "ds_country_rank"
       },
-      "options": {},
-      "title": "Comparison",
-      "type": "splunk.singlevalue"
+      "options": {
+        "backgroundColor": "#131D2E",
+        "stackMode": "stacked",
+        "seriesColorsByField": {
+          "Country median": "#4C9AFF",
+          "Home sensor": "#FFA940"
+        },
+        "dataValuesDisplay": "all",
+        "legendDisplay": "top",
+        "xAxisTitleVisibility": "hide",
+        "yAxisTitleVisibility": "hide"
+      }
+    },
+    "tbl_country": {
+      "type": "splunk.table",
+      "title": "Live radiation by country vs home",
+      "dataSources": {
+        "primary": "ds_country_table"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "count": 20,
+        "showInternalFields": false,
+        "columnFormat": {
+          "Median uSv/h": {
+            "data": "> table | seriesByName(\"Median uSv/h\") | formatByType(Median_uSv_hFormat)",
+            "rowBackgroundColors": "> table | seriesByName(\"Median uSv/h\") | rangeValue(Median_uSv_hBg)",
+            "rowColors": "> table | seriesByName(\"Median uSv/h\") | rangeValue(Median_uSv_hFg)"
+          },
+          "Min": {
+            "data": "> table | seriesByName(\"Min\") | formatByType(MinFormat)"
+          },
+          "Max": {
+            "data": "> table | seriesByName(\"Max\") | formatByType(MaxFormat)",
+            "rowBackgroundColors": "> table | seriesByName(\"Max\") | rangeValue(MaxBg)",
+            "rowColors": "> table | seriesByName(\"Max\") | rangeValue(MaxFg)"
+          },
+          "Home uSv/h": {
+            "data": "> table | seriesByName(\"Home uSv/h\") | formatByType(Home_uSv_hFormat)",
+            "rowBackgroundColors": "> table | seriesByName(\"Home uSv/h\") | rangeValue(Home_uSv_hBg)",
+            "rowColors": "> table | seriesByName(\"Home uSv/h\") | rangeValue(Home_uSv_hFg)"
+          },
+          "Home / country": {
+            "data": "> table | seriesByName(\"Home / country\") | formatByType(Home___countryFormat)",
+            "rowBackgroundColors": "> table | seriesByName(\"Home / country\") | rangeValue(Home___countryBg)",
+            "rowColors": "> table | seriesByName(\"Home / country\") | rangeValue(Home___countryFg)"
+          },
+          "Comparison": {
+            "data": "> table | seriesByName(\"Comparison\") | formatByType(ComparisonFormat)",
+            "rowBackgroundColors": "> table | seriesByName(\"Comparison\") | matchValue(ComparisonBg)",
+            "rowColors": "> table | seriesByName(\"Comparison\") | matchValue(ComparisonFg)"
+          }
+        }
+      },
+      "context": {
+        "Median_uSv_hFormat": {
+          "number": {
+            "thousandSeparated": false,
+            "precision": 4
+          }
+        },
+        "Median_uSv_hBg": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ],
+        "Median_uSv_hFg": [
+          {
+            "to": 0.1,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#0B1220"
+          },
+          {
+            "from": 1,
+            "value": "#0B1220"
+          }
+        ],
+        "MinFormat": {
+          "number": {
+            "thousandSeparated": false,
+            "precision": 4
+          }
+        },
+        "MaxFormat": {
+          "number": {
+            "thousandSeparated": false,
+            "precision": 4
+          }
+        },
+        "MaxBg": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ],
+        "MaxFg": [
+          {
+            "to": 0.1,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#0B1220"
+          },
+          {
+            "from": 1,
+            "value": "#0B1220"
+          }
+        ],
+        "Home_uSv_hFormat": {
+          "number": {
+            "thousandSeparated": false,
+            "precision": 4
+          }
+        },
+        "Home_uSv_hBg": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ],
+        "Home_uSv_hFg": [
+          {
+            "to": 0.1,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#0B1220"
+          },
+          {
+            "from": 1,
+            "value": "#0B1220"
+          }
+        ],
+        "Home___countryFormat": {
+          "number": {
+            "thousandSeparated": false,
+            "precision": 2
+          }
+        },
+        "Home___countryBg": [
+          {
+            "to": 0.67,
+            "value": "#4C9AFF"
+          },
+          {
+            "from": 0.67,
+            "to": 1.5,
+            "value": "#52C41A"
+          },
+          {
+            "from": 1.5,
+            "to": 3,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 3,
+            "value": "#FF4D4F"
+          }
+        ],
+        "Home___countryFg": [
+          {
+            "to": 0.67,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.67,
+            "to": 1.5,
+            "value": "#0B1220"
+          },
+          {
+            "from": 1.5,
+            "to": 3,
+            "value": "#0B1220"
+          },
+          {
+            "from": 3,
+            "value": "#0B1220"
+          }
+        ],
+        "ComparisonFormat": {
+          "string": {
+            "unitPosition": "after"
+          }
+        },
+        "ComparisonBg": [
+          {
+            "match": "Home higher",
+            "value": "#FA8C16"
+          },
+          {
+            "match": "Home lower",
+            "value": "#4C9AFF"
+          },
+          {
+            "match": "Similar",
+            "value": "#52C41A"
+          },
+          {
+            "match": "No live data",
+            "value": "#5B6B82"
+          },
+          {
+            "match": "Waiting for home",
+            "value": "#5B6B82"
+          }
+        ],
+        "ComparisonFg": [
+          {
+            "match": "Home higher",
+            "value": "#0B1220"
+          },
+          {
+            "match": "Home lower",
+            "value": "#0B1220"
+          },
+          {
+            "match": "Similar",
+            "value": "#0B1220"
+          },
+          {
+            "match": "No live data",
+            "value": "#0B1220"
+          },
+          {
+            "match": "Waiting for home",
+            "value": "#0B1220"
+          }
+        ]
+      }
+    },
+    "line_world": {
+      "type": "splunk.line",
+      "title": "Home vs country medians over time (µSv/h, hourly)",
+      "dataSources": {
+        "primary": "ds_compare_time"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "nullValueDisplay": "connect",
+        "legendDisplay": "right",
+        "xAxisTitleVisibility": "hide",
+        "yAxisTitleText": "µSv/h",
+        "seriesColorsByField": {
+          "Home sensor": "#FFA940"
+        }
+      }
+    },
+    "tbl_stations": {
+      "type": "splunk.table",
+      "title": "Highest live stations",
+      "dataSources": {
+        "primary": "ds_stations"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "count": 12,
+        "showInternalFields": false,
+        "columnFormat": {
+          "uSv/h": {
+            "data": "> table | seriesByName(\"uSv/h\") | formatByType(uSv_hFormat)",
+            "rowBackgroundColors": "> table | seriesByName(\"uSv/h\") | rangeValue(uSv_hBg)",
+            "rowColors": "> table | seriesByName(\"uSv/h\") | rangeValue(uSv_hFg)"
+          }
+        }
+      },
+      "context": {
+        "uSv_hFormat": {
+          "number": {
+            "thousandSeparated": false,
+            "precision": 4
+          }
+        },
+        "uSv_hBg": [
+          {
+            "to": 0.1,
+            "value": "#52C41A"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#FADB14"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#FA8C16"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#FF4D4F"
+          },
+          {
+            "from": 1,
+            "value": "#B37FEB"
+          }
+        ],
+        "uSv_hFg": [
+          {
+            "to": 0.1,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.2,
+            "to": 0.5,
+            "value": "#0B1220"
+          },
+          {
+            "from": 0.5,
+            "to": 1,
+            "value": "#0B1220"
+          },
+          {
+            "from": 1,
+            "value": "#0B1220"
+          }
+        ]
+      }
+    },
+    "tbl_feeds": {
+      "type": "splunk.table",
+      "title": "Feed status by network",
+      "dataSources": {
+        "primary": "ds_network_table"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "count": 12,
+        "showInternalFields": false,
+        "columnFormat": {
+          "Status": {
+            "data": "> table | seriesByName(\"Status\") | formatByType(StatusFormat)",
+            "rowBackgroundColors": "> table | seriesByName(\"Status\") | matchValue(StatusBg)",
+            "rowColors": "> table | seriesByName(\"Status\") | matchValue(StatusFg)"
+          }
+        }
+      },
+      "context": {
+        "StatusFormat": {
+          "string": {
+            "unitPosition": "after"
+          }
+        },
+        "StatusBg": [
+          {
+            "match": "OK",
+            "value": "#52C41A"
+          },
+          {
+            "match": "Error",
+            "value": "#FF4D4F"
+          }
+        ],
+        "StatusFg": [
+          {
+            "match": "OK",
+            "value": "#0B1220"
+          },
+          {
+            "match": "Error",
+            "value": "#0B1220"
+          }
+        ]
+      }
+    },
+    "tbl_typical": {
+      "type": "splunk.table",
+      "title": "Published typical outdoor background (µSv/h)",
+      "dataSources": {
+        "primary": "ds_typical"
+      },
+      "options": {
+        "backgroundColor": "#131D2E",
+        "count": 12,
+        "showInternalFields": false
+      }
     }
   },
   "dataSources": {
-    "ds_home_line": {
-      "name": "Home CPM and uSv/h",
+    "ds_home_base": {
+      "type": "ds.search",
+      "name": "Home sensor 10-minute series",
       "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| timechart span=10m avg(cpm) as CPM avg(usvh) as uSv_h"
-      },
-      "type": "ds.search"
+        "query": "index=radsensor sourcetype!=gov:radiation:json usvh=*\n| timechart span=10m avg(usvh) as usvh avg(cpm) as cpm"
+      }
     },
-    "ds_home_cpm": {
-      "name": "Home average CPM",
+    "ds_home_usvh_spark": {
+      "type": "ds.chain",
+      "name": "Home uSv/h sparkline",
       "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| timechart avg(cpm)"
-      },
-      "type": "ds.search"
+        "extend": "ds_home_base",
+        "query": "| where isnotnull(usvh)\n| fields _time usvh"
+      }
     },
-    "ds_home_usvh": {
-      "name": "Home average uSv/h",
+    "ds_home_cpm_spark": {
+      "type": "ds.chain",
+      "name": "Home CPM sparkline",
       "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| timechart avg(usvh)"
-      },
-      "type": "ds.search"
+        "extend": "ds_home_base",
+        "query": "| where isnotnull(cpm)\n| fields _time cpm"
+      }
     },
-    "ds_home_latest_cpm": {
-      "name": "Home latest CPM",
-      "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(cpm) as cpm"
-      },
-      "type": "ds.search"
-    },
-    "ds_home_latest_usvh": {
+    "ds_home_latest": {
+      "type": "ds.chain",
       "name": "Home latest uSv/h",
       "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(usvh) as usvh"
-      },
-      "type": "ds.search"
+        "extend": "ds_home_base",
+        "query": "| where isnotnull(usvh)\n| stats latest(usvh) as usvh\n| eval usvh=round(usvh, 4)"
+      }
+    },
+    "ds_home_avg": {
+      "type": "ds.chain",
+      "name": "Home period average",
+      "options": {
+        "extend": "ds_home_base",
+        "query": "| stats avg(usvh) as avg_usvh\n| eval avg_usvh=round(avg_usvh, 4)"
+      }
+    },
+    "ds_home_peak": {
+      "type": "ds.chain",
+      "name": "Home peak 10-minute average",
+      "options": {
+        "extend": "ds_home_base",
+        "query": "| stats max(usvh) as peak_usvh\n| eval peak_usvh=round(peak_usvh, 4)"
+      }
+    },
+    "ds_home_annual": {
+      "type": "ds.chain",
+      "name": "Home annualized dose",
+      "options": {
+        "extend": "ds_home_base",
+        "query": "| stats avg(usvh) as avg_usvh\n| eval msv_per_year=round(avg_usvh*8760/1000, 2)\n| fields msv_per_year"
+      }
+    },
+    "ds_home_area": {
+      "type": "ds.chain",
+      "name": "Home uSv/h over time",
+      "options": {
+        "extend": "ds_home_base",
+        "query": "| fields _time usvh\n| rename usvh as \"uSv/h\""
+      }
+    },
+    "ds_home_cpm_line": {
+      "type": "ds.chain",
+      "name": "Home CPM over time",
+      "options": {
+        "extend": "ds_home_base",
+        "query": "| fields _time cpm\n| rename cpm as CPM"
+      }
+    },
+    "ds_home_hourly": {
+      "type": "ds.chain",
+      "name": "Home by hour of day",
+      "options": {
+        "extend": "ds_home_base",
+        "query": "| where isnotnull(usvh)\n| eval hour=strftime(_time, \"%H\")\n| stats avg(usvh) as \"Avg uSv/h\" by hour\n| eval \"Avg uSv/h\"=round('Avg uSv/h', 4)"
+      }
+    },
+    "ds_home_hist": {
+      "type": "ds.chain",
+      "name": "Home reading distribution",
+      "options": {
+        "extend": "ds_home_base",
+        "query": "| where isnotnull(usvh)\n| eval bucket=printf(\"%.3f\", floor(usvh*200)/200)\n| stats count as \"10-min intervals\" by bucket\n| sort bucket"
+      }
     },
     "ds_world_median": {
-      "name": "World live median",
+      "type": "ds.search",
+      "name": "World live median (median of country medians)",
       "options": {
-        "query": "index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network=\"All government networks\"\n| stats latest(median_usvh) as median_usvh"
-      },
-      "type": "ds.search"
+        "query": "index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=station usvh=*\n| stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n| stats median(usvh) as usvh by country\n| stats median(usvh) as world_usvh\n| eval world_usvh=round(world_usvh, 4)"
+      }
     },
     "ds_home_vs_world": {
+      "type": "ds.search",
       "name": "Home minus world",
       "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network=\"All government networks\"\n  | stats latest(median_usvh) as world_usvh\n]\n| eval delta_usvh=round(home_usvh-world_usvh, 4)\n| fields delta_usvh"
-      },
-      "type": "ds.search"
+        "query": "index=radsensor sourcetype!=gov:radiation:json usvh=*\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=station usvh=*\n  | stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n  | stats median(usvh) as usvh by country\n  | stats median(usvh) as world_usvh\n]\n| eval delta_usvh=round(home_usvh-world_usvh, 4)\n| fields delta_usvh"
+      }
     },
     "ds_home_vs_world_ratio": {
+      "type": "ds.search",
       "name": "Home over world",
       "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network=\"All government networks\"\n  | stats latest(median_usvh) as world_usvh\n]\n| eval ratio=round(home_usvh/world_usvh, 2)\n| fields ratio"
-      },
-      "type": "ds.search"
+        "query": "index=radsensor sourcetype!=gov:radiation:json usvh=*\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=station usvh=*\n  | stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n  | stats median(usvh) as usvh by country\n  | stats median(usvh) as world_usvh\n]\n| eval ratio=round(home_usvh/world_usvh, 2)\n| fields ratio"
+      }
     },
     "ds_compare_status": {
+      "type": "ds.search",
       "name": "Comparison status",
       "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network=\"All government networks\"\n  | stats latest(median_usvh) as world_usvh\n]\n| eval comparison=case(\n  isnull(world_usvh), \"Waiting for government feed\",\n  home_usvh > world_usvh*1.5, \"Home is higher than the live world median\",\n  home_usvh < world_usvh*0.67, \"Home is lower than the live world median\",\n  1=1, \"Home is similar to the live world median\")\n| fields comparison"
-      },
-      "type": "ds.search"
+        "query": "index=radsensor sourcetype!=gov:radiation:json usvh=*\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=station usvh=*\n  | stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n  | stats median(usvh) as usvh by country\n  | stats median(usvh) as world_usvh\n]\n| eval comparison=case(\n  isnull(world_usvh), \"Waiting for government feeds\",\n  isnull(home_usvh), \"Waiting for home sensor\",\n  home_usvh > world_usvh*1.5, \"Home reads HIGHER than the live world median\",\n  home_usvh < world_usvh*0.67, \"Home reads LOWER than the live world median\",\n  1=1, \"Home is in line with the live world median\")\n| fields comparison"
+      }
     },
-    "ds_compare_bar": {
-      "name": "Network bar comparison",
+    "ds_live_counts": {
+      "type": "ds.search",
+      "name": "Live countries and stations",
       "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(usvh) as usvh\n| eval source_network=\"Home sensor\"\n| append [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network!=\"All government networks\"\n  | stats latest(median_usvh) as usvh by source_network\n]\n| table source_network usvh\n| sort usvh"
-      },
-      "type": "ds.search"
+        "query": "index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=station usvh=*\n| stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n| stats dc(country) as countries count as stations"
+      }
     },
-    "ds_compare_time": {
-      "name": "Home vs networks over time",
+    "ds_live_countries": {
+      "type": "ds.chain",
+      "name": "Countries reporting",
       "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| eval series=\"Home sensor\"\n| eval usvh_plot=usvh\n| append [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary\n  | eval series=source_network\n  | eval usvh_plot=median_usvh\n]\n| timechart span=1h avg(usvh_plot) by series"
-      },
-      "type": "ds.search"
+        "extend": "ds_live_counts",
+        "query": "| fields countries"
+      }
     },
-    "ds_network_table": {
-      "name": "Network summary table",
+    "ds_live_stations": {
+      "type": "ds.chain",
+      "name": "Stations reporting",
       "options": {
-        "query": "index=radsensor sourcetype=gov:radiation:json event_type=network_summary\n| stats latest(median_usvh) as median_usvh latest(avg_usvh) as avg_usvh latest(p10_usvh) as p10_usvh latest(p90_usvh) as p90_usvh latest(min_usvh) as min_usvh latest(max_usvh) as max_usvh latest(station_count) as station_count latest(country) as country latest(dose_component) as dose_component by source_network\n| append [\n  search index=radsensor sourcetype!=gov:radiation:json\n  | stats latest(usvh) as home_usvh\n  | eval source_network=\"__HOME__\"\n]\n| eventstats max(home_usvh) as home_usvh\n| where source_network!=\"__HOME__\"\n| eval home_minus_network=round(home_usvh-median_usvh, 4)\n| eval home_ratio=round(home_usvh/median_usvh, 2)\n| table source_network country dose_component station_count median_usvh avg_usvh p10_usvh p90_usvh min_usvh max_usvh home_usvh home_minus_network home_ratio\n| sort source_network"
-      },
-      "type": "ds.search"
-    },
-    "ds_typical": {
-      "name": "Typical published background",
-      "options": {
-        "query": "| inputlookup typical_background.csv\n| table region network agency typical_usvh range_low_usvh range_high_usvh dose_component citation"
-      },
-      "type": "ds.search"
-    },
-    "ds_stations": {
-      "name": "Highest stations",
-      "options": {
-        "query": "index=radsensor sourcetype=gov:radiation:json event_type=station\n| stats latest(usvh) as usvh latest(country) as country latest(lat) as lat latest(lon) as lon latest(dose_component) as dose_component latest(measured_at) as measured_at by station_name source_network\n| sort - usvh\n| head 50\n| eval usvh=round(usvh, 4)\n| table measured_at source_network country station_name usvh dose_component lat lon"
-      },
-      "type": "ds.search"
+        "extend": "ds_live_counts",
+        "query": "| fields stations"
+      }
     },
     "ds_map": {
+      "type": "ds.search",
       "name": "Station map",
       "options": {
-        "query": "index=radsensor sourcetype=gov:radiation:json event_type=station lat=* lon=*\n| stats latest(usvh) as usvh latest(lat) as lat latest(lon) as lon latest(country) as country by station_name source_network\n| eval usvh=round(usvh, 4)"
-      },
-      "type": "ds.search"
+        "query": "index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=station usvh=* lat=* lon=*\n| stats latest(usvh) as usvh latest(lat) as lat latest(lon) as lon latest(station_name) as station_name latest(source_network) as source_network by country station_id\n| eval usvh=round(usvh, 4)\n| table lat lon usvh station_name country source_network"
+      }
+    },
+    "ds_country_rank": {
+      "type": "ds.search",
+      "name": "Home vs country medians",
+      "options": {
+        "query": "index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=station usvh=*\n| stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n| stats median(usvh) as usvh by country\n| eval \"Country median\"=round(usvh, 4)\n| append [\n  search index=radsensor sourcetype!=gov:radiation:json usvh=*\n  | stats latest(usvh) as usvh\n  | eval country=\"Home sensor\", \"Home sensor\"=round(usvh, 4)\n]\n| sort - usvh\n| table country \"Country median\" \"Home sensor\""
+      }
+    },
+    "ds_country_table": {
+      "type": "ds.search",
+      "name": "Live radiation by country vs home",
+      "options": {
+        "query": "index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=station usvh=*\n| stats latest(usvh) as usvh latest(source_network) as source_network latest(dose_component) as dose_component latest(_time) as last_time by country station_id\n| stats count as stations median(usvh) as median_usvh min(usvh) as min_usvh max(usvh) as max_usvh max(last_time) as last_time first(source_network) as source_network first(dose_component) as dose_component by country\n| append [\n  | inputlookup typical_background.csv\n  | where region!=\"World\"\n  | rename region as country\n  | fields country typical_usvh\n]\n| stats first(*) as * by country\n| eval join_key=1\n| join type=left join_key [\n  search index=radsensor sourcetype!=gov:radiation:json usvh=*\n  | stats latest(usvh) as home_usvh\n  | eval join_key=1\n]\n| eval home_ratio=round(home_usvh/median_usvh, 2)\n| eval comparison=case(\n  isnull(median_usvh), \"No live data\",\n  isnull(home_usvh), \"Waiting for home\",\n  home_usvh > median_usvh*1.5, \"Home higher\",\n  home_usvh < median_usvh*0.67, \"Home lower\",\n  1=1, \"Similar\")\n| eval live=if(isnull(median_usvh), 0, 1)\n| eval last_reading=strftime(last_time, \"%Y-%m-%d %H:%M\")\n| foreach median_usvh min_usvh max_usvh home_usvh [ eval <<FIELD>>=round('<<FIELD>>', 4) ]\n| sort -live +country\n| table country source_network dose_component stations median_usvh min_usvh max_usvh typical_usvh home_usvh home_ratio comparison last_reading\n| rename country as Country source_network as Network dose_component as Dose stations as Stations median_usvh as \"Median uSv/h\" min_usvh as \"Min\" max_usvh as \"Max\" typical_usvh as \"Typical\" home_usvh as \"Home uSv/h\" home_ratio as \"Home / country\" comparison as Comparison last_reading as \"Last reading\""
+      }
+    },
+    "ds_compare_time": {
+      "type": "ds.search",
+      "name": "Home vs countries over time",
+      "options": {
+        "query": "index=radsensor ((sourcetype!=gov:radiation:json usvh=*) OR (sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=network_summary station_count>0))\n| eval series=if(sourcetype==\"gov:radiation:json\", country, \"Home sensor\")\n| eval usvh_plot=if(sourcetype==\"gov:radiation:json\", median_usvh, usvh)\n| timechart span=1h limit=20 avg(usvh_plot) by series"
+      }
+    },
+    "ds_stations": {
+      "type": "ds.search",
+      "name": "Highest stations",
+      "options": {
+        "query": "index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type=station usvh=*\n| stats latest(usvh) as usvh latest(station_name) as station_name latest(_time) as last_time by country station_id\n| sort - usvh\n| head 25\n| eval usvh=round(usvh, 4), measured=strftime(last_time, \"%m-%d %H:%M\")\n| table station_name country usvh measured\n| rename station_name as Station country as Country usvh as \"uSv/h\" measured as Measured"
+      }
+    },
+    "ds_network_table": {
+      "type": "ds.search",
+      "name": "Feed status by network",
+      "options": {
+        "query": "index=radsensor sourcetype=gov:radiation:json collector=\"background_radiation-*\" event_type IN (network_summary, source_error)\n| stats latest(event_type) as last_event latest(error) as last_error latest(station_count) as station_count latest(stale_dropped) as stale_dropped latest(_time) as last_time by source_network\n| eval Status=if(last_event==\"source_error\", \"Error\", \"OK\")\n| eval Detail=if(Status==\"Error\", last_error, station_count.\" stations\".if(stale_dropped>0, \", \".stale_dropped.\" stale dropped\", \"\"))\n| eval \"Last poll\"=strftime(last_time, \"%m-%d %H:%M\")\n| rename source_network as Network\n| table Network Status Detail \"Last poll\"\n| sort Network"
+      }
+    },
+    "ds_typical": {
+      "type": "ds.search",
+      "name": "Typical published background",
+      "options": {
+        "query": "| inputlookup typical_background.csv\n| table region network agency typical_usvh range_low_usvh range_high_usvh dose_component\n| rename region as Region network as Network agency as Agency typical_usvh as \"Typical uSv/h\" range_low_usvh as Low range_high_usvh as High dose_component as Dose"
+      }
     }
   },
   "layout": {
     "globalInputs": [
       "input_global_trp"
     ],
-    "layoutDefinitions": {
-      "layout_home": {
-        "options": {
-          "height": 1080,
-          "width": 1440
-        },
-        "structure": [
-          {
-            "item": "viz_home_md",
-            "position": {
-              "h": 88,
-              "w": 1440,
-              "x": 0,
-              "y": 0
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_home_line",
-            "position": {
-              "h": 400,
-              "w": 1440,
-              "x": 0,
-              "y": 88
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_home_cpm",
-            "position": {
-              "h": 280,
-              "w": 360,
-              "x": 0,
-              "y": 488
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_home_usvh",
-            "position": {
-              "h": 280,
-              "w": 360,
-              "x": 360,
-              "y": 488
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_home_latest_cpm",
-            "position": {
-              "h": 280,
-              "w": 360,
-              "x": 720,
-              "y": 488
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_home_latest_usvh",
-            "position": {
-              "h": 280,
-              "w": 360,
-              "x": 1080,
-              "y": 488
-            },
-            "type": "block"
-          }
-        ],
-        "type": "grid"
-      },
-      "layout_world": {
-        "options": {
-          "height": 1760,
-          "width": 1440
-        },
-        "structure": [
-          {
-            "item": "viz_world_md",
-            "position": {
-              "h": 100,
-              "w": 1440,
-              "x": 0,
-              "y": 0
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_home",
-            "position": {
-              "h": 200,
-              "w": 288,
-              "x": 0,
-              "y": 100
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_median",
-            "position": {
-              "h": 200,
-              "w": 288,
-              "x": 288,
-              "y": 100
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_delta",
-            "position": {
-              "h": 200,
-              "w": 288,
-              "x": 576,
-              "y": 100
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_ratio",
-            "position": {
-              "h": 200,
-              "w": 288,
-              "x": 864,
-              "y": 100
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_compare_status",
-            "position": {
-              "h": 200,
-              "w": 288,
-              "x": 1152,
-              "y": 100
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_bar",
-            "position": {
-              "h": 360,
-              "w": 720,
-              "x": 0,
-              "y": 300
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_line",
-            "position": {
-              "h": 360,
-              "w": 720,
-              "x": 720,
-              "y": 300
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_table",
-            "position": {
-              "h": 320,
-              "w": 1440,
-              "x": 0,
-              "y": 660
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_map",
-            "position": {
-              "h": 400,
-              "w": 720,
-              "x": 0,
-              "y": 980
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_stations",
-            "position": {
-              "h": 400,
-              "w": 720,
-              "x": 720,
-              "y": 980
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_typical_table",
-            "position": {
-              "h": 320,
-              "w": 1440,
-              "x": 0,
-              "y": 1380
-            },
-            "type": "block"
-          }
-        ],
-        "type": "grid"
-      }
-    },
-    "options": {},
     "tabs": {
       "items": [
         {
@@ -529,11 +1322,316 @@
           "layoutId": "layout_home"
         },
         {
-          "label": "World vs home",
+          "label": "Live world vs home",
           "layoutId": "layout_world"
         }
       ]
-    }
+    },
+    "layoutDefinitions": {
+      "layout_home": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 1310,
+          "display": "auto",
+          "backgroundColor": "#0B1220"
+        },
+        "structure": [
+          {
+            "item": "md_home_head",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 10,
+              "w": 1400,
+              "h": 70
+            }
+          },
+          {
+            "item": "sv_home_latest",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 90,
+              "w": 267,
+              "h": 170
+            }
+          },
+          {
+            "item": "sv_home_cpm",
+            "type": "block",
+            "position": {
+              "x": 303,
+              "y": 90,
+              "w": 267,
+              "h": 170
+            }
+          },
+          {
+            "item": "sv_home_avg",
+            "type": "block",
+            "position": {
+              "x": 586,
+              "y": 90,
+              "w": 267,
+              "h": 170
+            }
+          },
+          {
+            "item": "sv_home_peak",
+            "type": "block",
+            "position": {
+              "x": 869,
+              "y": 90,
+              "w": 267,
+              "h": 170
+            }
+          },
+          {
+            "item": "sv_home_annual",
+            "type": "block",
+            "position": {
+              "x": 1152,
+              "y": 90,
+              "w": 267,
+              "h": 170
+            }
+          },
+          {
+            "item": "area_home",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 276,
+              "w": 940,
+              "h": 380
+            }
+          },
+          {
+            "item": "gauge_home",
+            "type": "block",
+            "position": {
+              "x": 976,
+              "y": 276,
+              "w": 444,
+              "h": 170
+            }
+          },
+          {
+            "item": "md_home_scale",
+            "type": "block",
+            "position": {
+              "x": 976,
+              "y": 462,
+              "w": 444,
+              "h": 194
+            }
+          },
+          {
+            "item": "line_home_cpm",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 672,
+              "w": 692,
+              "h": 320
+            }
+          },
+          {
+            "item": "col_home_hourly",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 672,
+              "w": 692,
+              "h": 320
+            }
+          },
+          {
+            "item": "col_home_hist",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 1008,
+              "w": 1400,
+              "h": 280
+            }
+          }
+        ]
+      },
+      "layout_world": {
+        "type": "absolute",
+        "options": {
+          "width": 1440,
+          "height": 2654,
+          "display": "auto",
+          "backgroundColor": "#0B1220"
+        },
+        "structure": [
+          {
+            "item": "md_world_head",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 10,
+              "w": 1400,
+              "h": 70
+            }
+          },
+          {
+            "item": "sv_w_home",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 90,
+              "w": 220,
+              "h": 160
+            }
+          },
+          {
+            "item": "sv_w_world",
+            "type": "block",
+            "position": {
+              "x": 256,
+              "y": 90,
+              "w": 220,
+              "h": 160
+            }
+          },
+          {
+            "item": "sv_w_delta",
+            "type": "block",
+            "position": {
+              "x": 492,
+              "y": 90,
+              "w": 220,
+              "h": 160
+            }
+          },
+          {
+            "item": "sv_w_ratio",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 90,
+              "w": 220,
+              "h": 160
+            }
+          },
+          {
+            "item": "sv_w_countries",
+            "type": "block",
+            "position": {
+              "x": 964,
+              "y": 90,
+              "w": 220,
+              "h": 160
+            }
+          },
+          {
+            "item": "sv_w_stations",
+            "type": "block",
+            "position": {
+              "x": 1200,
+              "y": 90,
+              "w": 220,
+              "h": 160
+            }
+          },
+          {
+            "item": "sv_w_status",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 266,
+              "w": 1400,
+              "h": 80
+            }
+          },
+          {
+            "item": "map_world",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 362,
+              "w": 920,
+              "h": 600
+            }
+          },
+          {
+            "item": "md_map_legend",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 966,
+              "w": 920,
+              "h": 34
+            }
+          },
+          {
+            "item": "bar_rank",
+            "type": "block",
+            "position": {
+              "x": 956,
+              "y": 362,
+              "w": 464,
+              "h": 638
+            }
+          },
+          {
+            "item": "tbl_country",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 1016,
+              "w": 1400,
+              "h": 430
+            }
+          },
+          {
+            "item": "line_world",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 1462,
+              "w": 1400,
+              "h": 360
+            }
+          },
+          {
+            "item": "tbl_stations",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 1838,
+              "w": 692,
+              "h": 420
+            }
+          },
+          {
+            "item": "tbl_feeds",
+            "type": "block",
+            "position": {
+              "x": 728,
+              "y": 1838,
+              "w": 692,
+              "h": 420
+            }
+          },
+          {
+            "item": "tbl_typical",
+            "type": "block",
+            "position": {
+              "x": 20,
+              "y": 2274,
+              "w": 1400,
+              "h": 360
+            }
+          }
+        ]
+      }
+    },
+    "options": {}
   },
   "applicationProperties": {
     "hideEdit": false,
