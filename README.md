@@ -39,6 +39,25 @@ $SPLUNK_HOME/bin/splunk cmd python3 etc/apps/background_radiation/bin/fetch_gov_
 
 To import only the dashboard, paste `dashboards/background_radiation.json` into Dashboard Studio.
 
+## Troubleshooting an empty world tab
+
+The world tab only reads events tagged `collector=background_radiation-*`. If it shows 0 countries:
+
+```
+| rest /services/data/inputs/script splunk_server=local
+| search title=*fetch_gov_radiation*
+| table title eai:acl.app disabled interval
+```
+
+Both stanzas must be listed with `disabled=0`. Then check that the script ran and what it logged:
+
+```
+index=_internal sourcetype=splunkd component=ExecProcessor fetch_gov_radiation
+| table _time log_level event_message
+```
+
+Each run writes one `fetch_gov_radiation: background_radiation-1.1: N stations, ok=[...], failed=[...]` line there.
+
 ## Tabs
 
 - **Home sensor** — your original CPM / µSv/h charts, with latest and period averages

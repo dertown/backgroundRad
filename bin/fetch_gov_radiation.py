@@ -23,6 +23,8 @@ import io
 import json
 import re
 import statistics
+import os
+import ssl
 import sys
 import unicodedata
 import urllib.error
@@ -33,6 +35,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
+# Every event carries this so dashboards can ignore data from older collector versions.
+COLLECTOR_ID = "background_radiation-1.1"
 USER_AGENT = "background-radiation-splunk/1.1 (open government data collector)"
 HTTP_TIMEOUT = 90
 # Station readings older than this are dropped so a dead feed cannot pose as live.
@@ -70,6 +74,9 @@ ARPANSA_URL = (
     "?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&f=geojson"
 )
 RADNET_URL = "https://radnet.epa.gov/cdx-radnet-rest/api/rest/csv/{year}/fixed/{path}"
+# Public intermediate that some radnet.epa.gov servers omit from their chain; the root still
+# comes from the system trust store.
+RADNET_INTERMEDIATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "radnet_intermediate.pem")
 
 # NADAM stations whose names do not match a MeteoSwiss station entry.
 NADAM_EXTRA_COORDS = {
@@ -157,12 +164,12 @@ def is_fresh(measured_at: Optional[str], max_age_hours: float = MAX_STATION_AGE_
     return datetime.now(timezone.utc) - when <= timedelta(hours=max_age_hours)
 
 
-def http_get(url: str) -> bytes:
+def http_get(url: str, context: Optional[ssl.SSLContext] = None) -> bytes:
     req = urllib.request.Request(
         url,
         headers={"User-Agent": USER_AGENT, "Accept": "*/*", "Accept-Encoding": "gzip"},
     )
-    with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+    with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT, context=context) as resp:
         body = resp.read()
         if resp.headers.get("Content-Encoding", "").lower() == "gzip" or body[:2] == b"\x1f\x8b":
             body = gzip.decompress(body)
@@ -222,6 +229,7 @@ def station_event(**fields: Any) -> Dict[str, Any]:
     event = {
         "measured_at": fields.pop("measured_at", None) or utc_now(),
         "origin": "government",
+        "collector": COLLECTOR_ID,
         "event_type": "station",
         "collected_at": utc_now(),
     }
@@ -233,6 +241,7 @@ def summary_event(source_network: str, country: str, country_code: str, agency: 
     event = {
         "measured_at": utc_now(),
         "origin": "government",
+        "collector": COLLECTOR_ID,
         "event_type": "network_summary",
         "collected_at": utc_now(),
         "source_network": source_network,
@@ -658,13 +667,25 @@ def fetch_australia() -> List[Dict[str, Any]]:
     )
 
 
+def _radnet_context() -> ssl.SSLContext:
+    context = ssl.create_default_context()
+    if os.path.exists(RADNET_INTERMEDIATE):
+        context.load_verify_locations(cafile=RADNET_INTERMEDIATE)
+    return context
+
+
 def _radnet_latest(station: Tuple[str, str, float, float]) -> Optional[Dict[str, Any]]:
     path, name, lat, lon = station
     year = datetime.now(timezone.utc).year
     url = RADNET_URL.format(year=year, path=urllib.parse.quote(path))
-    try:
-        text = http_get(url).decode("utf-8", "replace")
-    except (urllib.error.URLError, TimeoutError, OSError):
+    text = None
+    for _ in range(3):
+        try:
+            text = http_get(url, _radnet_context()).decode("utf-8", "replace")
+            break
+        except (urllib.error.URLError, TimeoutError, OSError):
+            continue
+    if text is None:
         return None
     latest: Optional[Tuple[str, float]] = None
     for row in csv.reader(io.StringIO(text)):
@@ -737,8 +758,14 @@ def run_fetcher(key: str) -> Tuple[str, Optional[List[Dict[str, Any]]], Optional
     name, fn = FETCHERS[key]
     try:
         return name, fn(), None
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError, ET.ParseError, ValueError, KeyError, TypeError, OSError) as exc:
-        return name, None, str(exc)
+    except Exception as exc:  # one broken feed must never stop the others from being indexed
+        return name, None, "%s: %s" % (type(exc).__name__, exc)
+
+
+def log(message: str) -> None:
+    """Write to stderr, which Splunk records in splunkd.log under ExecProcessor."""
+    sys.stderr.write("fetch_gov_radiation: %s\n" % message)
+    sys.stderr.flush()
 
 
 def main() -> int:
@@ -749,12 +776,16 @@ def main() -> int:
         default=",".join(DEFAULT_SOURCES),
         help="Comma-separated sources to poll (%s)" % ", ".join(FETCHERS),
     )
-    args = parser.parse_args()
+    # Tolerate stale arguments from older inputs.conf stanzas instead of exiting with no events.
+    args, extra = parser.parse_known_args()
+    if extra:
+        log("ignoring unknown argument(s): %s" % " ".join(extra))
 
     keys = [k.strip().lower() for k in args.sources.split(",") if k.strip()]
     unknown = [k for k in keys if k not in FETCHERS]
     if unknown:
-        parser.error("unknown source(s): %s" % ", ".join(unknown))
+        log("ignoring unknown source(s): %s" % ", ".join(unknown))
+    keys = [k for k in keys if k in FETCHERS] or list(DEFAULT_SOURCES)
 
     all_events: List[Dict[str, Any]] = []
     ok_sources: List[str] = []
@@ -770,6 +801,7 @@ def main() -> int:
                 {
                     "measured_at": utc_now(),
                     "origin": "government",
+                    "collector": COLLECTOR_ID,
                     "event_type": "source_error",
                     "collected_at": utc_now(),
                     "source_network": name,
@@ -784,6 +816,7 @@ def main() -> int:
         {
             "measured_at": utc_now(),
             "origin": "government",
+            "collector": COLLECTOR_ID,
             "event_type": "collector_run",
             "collected_at": utc_now(),
             "sources_ok": ok_sources,
@@ -792,6 +825,10 @@ def main() -> int:
         }
     )
 
+    log(
+        "%s: %d stations, ok=%s, failed=%s"
+        % (COLLECTOR_ID, all_events[-1]["station_count"], ok_sources, [f["source_network"] for f in failed_sources])
+    )
     for event in all_events:
         if args.summary_only and event.get("event_type") == "station":
             continue
