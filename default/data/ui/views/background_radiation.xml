@@ -96,7 +96,7 @@
     "viz_world_md": {
       "type": "splunk.markdown",
       "options": {
-        "markdown": "### World vs home\nLive public networks: **Germany BfS ODL-Info** (total ambient uSv/h), **Health Canada FPS** (terrestrial nSv/h converted to uSv/h), **Finland STUK** (outdoor uSv/h). Canada is terrestrial-only, so it usually reads lower than total-dose networks. Typical published ranges are in the lookup table."
+        "markdown": "### Live world vs home\nLatest reading per station from public government networks, grouped by country: **Germany** BfS, **Finland** STUK, **Austria** SFWS, **Switzerland** NADAM (daily mean), **Japan** NRA, **Australia** ARPANSA, **United States** EPA RadNet (hourly), **Canada** Health Canada FPS (terrestrial only, so it reads lower). Countries without a live feed show their published typical value."
       }
     },
     "viz_world_home": {
@@ -116,7 +116,7 @@
       "options": {
         "numberPrecision": 4
       },
-      "title": "Live world median uSv/h",
+      "title": "Live world median uSv/h (median of countries)",
       "type": "splunk.singlevalue"
     },
     "viz_world_delta": {
@@ -144,7 +144,7 @@
         "primary": "ds_compare_bar"
       },
       "options": {},
-      "title": "Home vs government network medians (uSv/h)",
+      "title": "Home vs live country medians (uSv/h)",
       "type": "splunk.column"
     },
     "viz_world_line": {
@@ -154,7 +154,7 @@
       "options": {
         "nullValueDisplay": "connect"
       },
-      "title": "Home vs government medians over time",
+      "title": "Home vs country medians over time",
       "type": "splunk.line"
     },
     "viz_world_table": {
@@ -164,7 +164,7 @@
       "options": {
         "count": 20
       },
-      "title": "Network summaries vs home",
+      "title": "Feed status by network",
       "type": "splunk.table"
     },
     "viz_typical_table": {
@@ -193,12 +193,48 @@
       },
       "options": {
         "center": [
-          10,
-          30
+          35,
+          10
         ],
-        "zoom": 2
+        "zoom": 1.6,
+        "layers": [
+          {
+            "type": "marker",
+            "latitude": "> primary | seriesByName('lat')",
+            "longitude": "> primary | seriesByName('lon')",
+            "dataColors": "> primary | seriesByName('usvh') | rangeValue(markerColors)",
+            "additionalTooltipFields": [
+              "station_name",
+              "country",
+              "usvh",
+              "source_network"
+            ]
+          }
+        ]
       },
-      "title": "Government stations (uSv/h)",
+      "context": {
+        "markerColors": [
+          {
+            "to": 0.1,
+            "value": "#1a9850"
+          },
+          {
+            "from": 0.1,
+            "to": 0.2,
+            "value": "#fdae61"
+          },
+          {
+            "from": 0.2,
+            "to": 1,
+            "value": "#d73027"
+          },
+          {
+            "from": 1,
+            "value": "#7b3294"
+          }
+        ]
+      },
+      "title": "Live government stations (uSv/h: green <0.1, orange 0.1-0.2, red 0.2-1, purple >1)",
       "type": "splunk.map"
     },
     "viz_compare_status": {
@@ -208,6 +244,24 @@
       "options": {},
       "title": "Comparison",
       "type": "splunk.singlevalue"
+    },
+    "viz_live_countries": {
+      "dataSources": {
+        "primary": "ds_live_country_count"
+      },
+      "options": {},
+      "title": "Countries reporting live",
+      "type": "splunk.singlevalue"
+    },
+    "viz_country_table": {
+      "dataSources": {
+        "primary": "ds_country_table"
+      },
+      "options": {
+        "count": 20
+      },
+      "title": "Live radiation by country vs home",
+      "type": "splunk.table"
     }
   },
   "dataSources": {
@@ -246,55 +300,6 @@
       },
       "type": "ds.search"
     },
-    "ds_world_median": {
-      "name": "World live median",
-      "options": {
-        "query": "index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network=\"All government networks\"\n| stats latest(median_usvh) as median_usvh"
-      },
-      "type": "ds.search"
-    },
-    "ds_home_vs_world": {
-      "name": "Home minus world",
-      "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network=\"All government networks\"\n  | stats latest(median_usvh) as world_usvh\n]\n| eval delta_usvh=round(home_usvh-world_usvh, 4)\n| fields delta_usvh"
-      },
-      "type": "ds.search"
-    },
-    "ds_home_vs_world_ratio": {
-      "name": "Home over world",
-      "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network=\"All government networks\"\n  | stats latest(median_usvh) as world_usvh\n]\n| eval ratio=round(home_usvh/world_usvh, 2)\n| fields ratio"
-      },
-      "type": "ds.search"
-    },
-    "ds_compare_status": {
-      "name": "Comparison status",
-      "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network=\"All government networks\"\n  | stats latest(median_usvh) as world_usvh\n]\n| eval comparison=case(\n  isnull(world_usvh), \"Waiting for government feed\",\n  home_usvh > world_usvh*1.5, \"Home is higher than the live world median\",\n  home_usvh < world_usvh*0.67, \"Home is lower than the live world median\",\n  1=1, \"Home is similar to the live world median\")\n| fields comparison"
-      },
-      "type": "ds.search"
-    },
-    "ds_compare_bar": {
-      "name": "Network bar comparison",
-      "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| stats latest(usvh) as usvh\n| eval source_network=\"Home sensor\"\n| append [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary source_network!=\"All government networks\"\n  | stats latest(median_usvh) as usvh by source_network\n]\n| table source_network usvh\n| sort usvh"
-      },
-      "type": "ds.search"
-    },
-    "ds_compare_time": {
-      "name": "Home vs networks over time",
-      "options": {
-        "query": "index=radsensor sourcetype!=gov:radiation:json\n| eval series=\"Home sensor\"\n| eval usvh_plot=usvh\n| append [\n  search index=radsensor sourcetype=gov:radiation:json event_type=network_summary\n  | eval series=source_network\n  | eval usvh_plot=median_usvh\n]\n| timechart span=1h avg(usvh_plot) by series"
-      },
-      "type": "ds.search"
-    },
-    "ds_network_table": {
-      "name": "Network summary table",
-      "options": {
-        "query": "index=radsensor sourcetype=gov:radiation:json event_type=network_summary\n| stats latest(median_usvh) as median_usvh latest(avg_usvh) as avg_usvh latest(p10_usvh) as p10_usvh latest(p90_usvh) as p90_usvh latest(min_usvh) as min_usvh latest(max_usvh) as max_usvh latest(station_count) as station_count latest(country) as country latest(dose_component) as dose_component by source_network\n| append [\n  search index=radsensor sourcetype!=gov:radiation:json\n  | stats latest(usvh) as home_usvh\n  | eval source_network=\"__HOME__\"\n]\n| eventstats max(home_usvh) as home_usvh\n| where source_network!=\"__HOME__\"\n| eval home_minus_network=round(home_usvh-median_usvh, 4)\n| eval home_ratio=round(home_usvh/median_usvh, 2)\n| table source_network country dose_component station_count median_usvh avg_usvh p10_usvh p90_usvh min_usvh max_usvh home_usvh home_minus_network home_ratio\n| sort source_network"
-      },
-      "type": "ds.search"
-    },
     "ds_typical": {
       "name": "Typical published background",
       "options": {
@@ -302,17 +307,80 @@
       },
       "type": "ds.search"
     },
+    "ds_world_median": {
+      "name": "World live median (median of country medians)",
+      "options": {
+        "query": "index=radsensor sourcetype=gov:radiation:json event_type=station usvh=*\n| stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n| stats median(usvh) as usvh by country\n| stats median(usvh) as world_usvh\n| eval world_usvh=round(world_usvh, 4)"
+      },
+      "type": "ds.search"
+    },
+    "ds_live_country_count": {
+      "name": "Countries with live data",
+      "options": {
+        "query": "index=radsensor sourcetype=gov:radiation:json event_type=station usvh=*\n| stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n| stats dc(country) as countries"
+      },
+      "type": "ds.search"
+    },
+    "ds_home_vs_world": {
+      "name": "Home minus world",
+      "options": {
+        "query": "index=radsensor sourcetype!=gov:radiation:json usvh=*\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json event_type=station usvh=*\n  | stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n  | stats median(usvh) as usvh by country\n  | stats median(usvh) as world_usvh\n]\n| eval delta_usvh=round(home_usvh-world_usvh, 4)\n| fields delta_usvh"
+      },
+      "type": "ds.search"
+    },
+    "ds_home_vs_world_ratio": {
+      "name": "Home over world",
+      "options": {
+        "query": "index=radsensor sourcetype!=gov:radiation:json usvh=*\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json event_type=station usvh=*\n  | stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n  | stats median(usvh) as usvh by country\n  | stats median(usvh) as world_usvh\n]\n| eval ratio=round(home_usvh/world_usvh, 2)\n| fields ratio"
+      },
+      "type": "ds.search"
+    },
+    "ds_compare_status": {
+      "name": "Comparison status",
+      "options": {
+        "query": "index=radsensor sourcetype!=gov:radiation:json usvh=*\n| stats latest(usvh) as home_usvh\n| appendcols [\n  search index=radsensor sourcetype=gov:radiation:json event_type=station usvh=*\n  | stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n  | stats median(usvh) as usvh by country\n  | stats median(usvh) as world_usvh\n]\n| eval comparison=case(\n  isnull(world_usvh), \"Waiting for government feeds\",\n  isnull(home_usvh), \"Waiting for home sensor\",\n  home_usvh > world_usvh*1.5, \"Home is higher than the live world median\",\n  home_usvh < world_usvh*0.67, \"Home is lower than the live world median\",\n  1=1, \"Home is similar to the live world median\")\n| fields comparison"
+      },
+      "type": "ds.search"
+    },
+    "ds_compare_bar": {
+      "name": "Home vs country medians",
+      "options": {
+        "query": "index=radsensor sourcetype!=gov:radiation:json usvh=*\n| stats latest(usvh) as usvh\n| eval country=\"Home sensor\"\n| append [\n  search index=radsensor sourcetype=gov:radiation:json event_type=station usvh=*\n  | stats latest(usvh) as usvh latest(_time) as last_time by country station_id\n  | stats median(usvh) as usvh by country\n]\n| eval usvh=round(usvh, 4)\n| sort usvh\n| fields country usvh"
+      },
+      "type": "ds.search"
+    },
+    "ds_compare_time": {
+      "name": "Home vs countries over time",
+      "options": {
+        "query": "index=radsensor ((sourcetype!=gov:radiation:json usvh=*) OR (sourcetype=gov:radiation:json event_type=network_summary station_count>0))\n| eval series=if(sourcetype==\"gov:radiation:json\", country, \"Home sensor\")\n| eval usvh_plot=if(sourcetype==\"gov:radiation:json\", median_usvh, usvh)\n| timechart span=1h limit=20 avg(usvh_plot) by series"
+      },
+      "type": "ds.search"
+    },
+    "ds_country_table": {
+      "name": "Live radiation by country vs home",
+      "options": {
+        "query": "index=radsensor sourcetype=gov:radiation:json event_type=station usvh=*\n| stats latest(usvh) as usvh latest(source_network) as source_network latest(dose_component) as dose_component latest(_time) as last_time by country station_id\n| stats count as stations median(usvh) as median_usvh min(usvh) as min_usvh max(usvh) as max_usvh max(last_time) as last_time first(source_network) as source_network first(dose_component) as dose_component by country\n| append [\n  | inputlookup typical_background.csv\n  | where region!=\"World\"\n  | rename region as country\n  | fields country typical_usvh\n]\n| stats first(*) as * by country\n| eval join_key=1\n| join type=left join_key [\n  search index=radsensor sourcetype!=gov:radiation:json usvh=*\n  | stats latest(usvh) as home_usvh\n  | eval join_key=1\n]\n| eval home_minus_country=round(home_usvh-median_usvh, 4)\n| eval home_ratio=round(home_usvh/median_usvh, 2)\n| eval comparison=case(\n  isnull(median_usvh), \"No live data in time range (typical \".typical_usvh.\")\",\n  isnull(home_usvh), \"Waiting for home sensor\",\n  home_usvh > median_usvh*1.5, \"Home higher\",\n  home_usvh < median_usvh*0.67, \"Home lower\",\n  1=1, \"Similar to home\")\n| eval live=if(isnull(median_usvh), 0, 1)\n| eval last_reading=strftime(last_time, \"%Y-%m-%d %H:%M\")\n| foreach median_usvh min_usvh max_usvh [ eval <<FIELD>>=round('<<FIELD>>', 4) ]\n| sort -live +country\n| table country source_network dose_component stations median_usvh min_usvh max_usvh typical_usvh home_usvh home_minus_country home_ratio comparison last_reading"
+      },
+      "type": "ds.search"
+    },
+    "ds_network_table": {
+      "name": "Network summary table",
+      "options": {
+        "query": "index=radsensor sourcetype=gov:radiation:json event_type IN (network_summary, source_error)\n| stats latest(event_type) as last_event latest(error) as last_error latest(median_usvh) as median_usvh latest(station_count) as station_count latest(stale_dropped) as stale_dropped latest(country) as country latest(dose_component) as dose_component latest(_time) as last_time by source_network\n| eval status=if(last_event==\"source_error\", \"Error: \".last_error, \"OK\")\n| eval last_poll=strftime(last_time, \"%Y-%m-%d %H:%M\")\n| table source_network country dose_component status station_count stale_dropped median_usvh last_poll\n| sort source_network"
+      },
+      "type": "ds.search"
+    },
     "ds_stations": {
       "name": "Highest stations",
       "options": {
-        "query": "index=radsensor sourcetype=gov:radiation:json event_type=station\n| stats latest(usvh) as usvh latest(country) as country latest(lat) as lat latest(lon) as lon latest(dose_component) as dose_component latest(measured_at) as measured_at by station_name source_network\n| sort - usvh\n| head 50\n| eval usvh=round(usvh, 4)\n| table measured_at source_network country station_name usvh dose_component lat lon"
+        "query": "index=radsensor sourcetype=gov:radiation:json event_type=station usvh=*\n| stats latest(usvh) as usvh latest(station_name) as station_name latest(source_network) as source_network latest(dose_component) as dose_component latest(_time) as last_time by country station_id\n| sort - usvh\n| head 50\n| eval usvh=round(usvh, 4), measured=strftime(last_time, \"%Y-%m-%d %H:%M\")\n| table measured country source_network station_name usvh dose_component"
       },
       "type": "ds.search"
     },
     "ds_map": {
       "name": "Station map",
       "options": {
-        "query": "index=radsensor sourcetype=gov:radiation:json event_type=station lat=* lon=*\n| stats latest(usvh) as usvh latest(lat) as lat latest(lon) as lon latest(country) as country by station_name source_network\n| eval usvh=round(usvh, 4)"
+        "query": "index=radsensor sourcetype=gov:radiation:json event_type=station usvh=* lat=* lon=*\n| stats latest(usvh) as usvh latest(lat) as lat latest(lon) as lon latest(station_name) as station_name latest(source_network) as source_network by country station_id\n| eval usvh=round(usvh, 4)\n| table lat lon usvh station_name country source_network"
       },
       "type": "ds.search"
     }
@@ -393,14 +461,14 @@
       },
       "layout_world": {
         "options": {
-          "height": 1760,
+          "height": 2380,
           "width": 1440
         },
         "structure": [
           {
             "item": "viz_world_md",
             "position": {
-              "h": 100,
+              "h": 110,
               "w": 1440,
               "x": 0,
               "y": 0
@@ -410,90 +478,100 @@
           {
             "item": "viz_world_home",
             "position": {
-              "h": 200,
-              "w": 288,
+              "h": 180,
+              "w": 240,
               "x": 0,
-              "y": 100
+              "y": 110
             },
             "type": "block"
           },
           {
             "item": "viz_world_median",
             "position": {
-              "h": 200,
-              "w": 288,
-              "x": 288,
-              "y": 100
+              "h": 180,
+              "w": 240,
+              "x": 240,
+              "y": 110
             },
             "type": "block"
           },
           {
             "item": "viz_world_delta",
             "position": {
-              "h": 200,
-              "w": 288,
-              "x": 576,
-              "y": 100
+              "h": 180,
+              "w": 240,
+              "x": 480,
+              "y": 110
             },
             "type": "block"
           },
           {
             "item": "viz_world_ratio",
             "position": {
-              "h": 200,
-              "w": 288,
-              "x": 864,
-              "y": 100
+              "h": 180,
+              "w": 240,
+              "x": 720,
+              "y": 110
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_live_countries",
+            "position": {
+              "h": 180,
+              "w": 240,
+              "x": 960,
+              "y": 110
             },
             "type": "block"
           },
           {
             "item": "viz_compare_status",
             "position": {
-              "h": 200,
-              "w": 288,
-              "x": 1152,
-              "y": 100
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_bar",
-            "position": {
-              "h": 360,
-              "w": 720,
-              "x": 0,
-              "y": 300
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_line",
-            "position": {
-              "h": 360,
-              "w": 720,
-              "x": 720,
-              "y": 300
-            },
-            "type": "block"
-          },
-          {
-            "item": "viz_world_table",
-            "position": {
-              "h": 320,
-              "w": 1440,
-              "x": 0,
-              "y": 660
+              "h": 180,
+              "w": 240,
+              "x": 1200,
+              "y": 110
             },
             "type": "block"
           },
           {
             "item": "viz_map",
             "position": {
-              "h": 400,
+              "h": 560,
+              "w": 1440,
+              "x": 0,
+              "y": 290
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_country_table",
+            "position": {
+              "h": 420,
+              "w": 1440,
+              "x": 0,
+              "y": 850
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_world_bar",
+            "position": {
+              "h": 380,
               "w": 720,
               "x": 0,
-              "y": 980
+              "y": 1270
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_world_line",
+            "position": {
+              "h": 380,
+              "w": 720,
+              "x": 720,
+              "y": 1270
             },
             "type": "block"
           },
@@ -502,8 +580,18 @@
             "position": {
               "h": 400,
               "w": 720,
+              "x": 0,
+              "y": 1650
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_world_table",
+            "position": {
+              "h": 400,
+              "w": 720,
               "x": 720,
-              "y": 980
+              "y": 1650
             },
             "type": "block"
           },
@@ -513,7 +601,7 @@
               "h": 320,
               "w": 1440,
               "x": 0,
-              "y": 1380
+              "y": 2050
             },
             "type": "block"
           }
@@ -529,7 +617,7 @@
           "layoutId": "layout_home"
         },
         {
-          "label": "World vs home",
+          "label": "Live world vs home",
           "layoutId": "layout_world"
         }
       ]

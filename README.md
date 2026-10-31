@@ -8,15 +8,22 @@ Home readings stay in `index=radsensor` (`cpm`, `usvh`). Government feeds are wr
 
 All live values are normalized to **µSv/h**.
 
-| Network | Agency | What you get |
+| Country | Network / agency | What you get |
 | --- | --- | --- |
-| Germany BfS ODL-Info | Federal Office for Radiation Protection | Hourly ambient dose rate, total (cosmic + terrestrial) |
-| Canada FPS | Health Canada | Latest terrestrial gamma (nSv/h ÷ 1000). Usually lower than total-dose networks |
-| Finland STUK | Radiation and Nuclear Safety Authority via FMI | Latest outdoor dose rate |
-| Combined | All of the above | World median used for the home comparison |
-| Published typicals | UNSCEAR / national reports | Lookup table if a live feed is down |
+| Germany | BfS ODL-Info | Hourly ambient dose rate, total (cosmic + terrestrial), ~1,600 stations |
+| Finland | STUK via FMI | 10-minute outdoor dose rate, ~250 stations |
+| Austria | Strahlenfrühwarnsystem (BMLUK) | 10-minute dose rate (nSv/h), ~110 stations; coordinates from the public EURDEP station list |
+| Switzerland | NADAM (NEOC/NAZ) | Previous day's mean dose rate (nSv/h), ~75 stations; coordinates from MeteoSwiss station metadata |
+| Japan | NRA RAMIS | Monitoring-post air dose rate, ~1,100 stations |
+| Australia | ARPANSA ERMS | 10-minute dose rate from the ERMS detectors |
+| United States | EPA RadNet | Hourly dose equivalent rate (nSv/h) for 30 major cities (hourly input) |
+| Canada | Health Canada FPS | Latest terrestrial gamma (nSv/h ÷ 1000). Usually lower than total-dose networks |
+| World | All of the above | Median of the country medians, used for the home comparison |
+| Published typicals | UNSCEAR / national reports | Lookup table, shown for countries with no live data |
 
-EPA RadNet near-real-time files are public, but they are per-station ZIP downloads rather than a bulk JSON API, so they are not polled automatically. US context is included via the typical-background lookup.
+Station readings older than 12 hours are dropped, so an outage shows up as missing data, not as stale "live" values. Brazil and the UK have no public live feed polled here; they appear through the typical-background lookup only.
+
+Run a single source with `--sources`, e.g. `--sources japan,austria`. The default run polls everything except `radnet`, which has its own hourly input.
 
 ## Install in Splunk
 
@@ -35,11 +42,13 @@ To import only the dashboard, paste `dashboards/background_radiation.json` into 
 ## Tabs
 
 - **Home sensor** — your original CPM / µSv/h charts, with latest and period averages
-- **World vs home** — live medians, home−world delta, home/world ratio, map, and highest stations
+- **Live world vs home** — world median, home−world delta, home/world ratio, station map (colored by µSv/h), per-country table vs home, highest stations, and feed status per network
 
 ## Notes
 
 - Indoor home Geigers often read differently from outdoor government monitors
-- Canada FPS is terrestrial-only; Germany and Finland are closer to total ambient dose
+- Canada FPS is terrestrial-only; the other networks are closer to total ambient dose
+- Japan includes posts near Fukushima Daiichi, so its maximum can be well above 1 µSv/h while the national median stays low
+- If **Feed status by network** shows `CERTIFICATE_VERIFY_FAILED`, the Python running the script lacks a CA certificate for that site; the BfS and FMI servers need a complete system CA store
 - Typical outdoor gamma is roughly **0.05–0.15 µSv/h**; that is background, not an alarm
 - No API keys or credentials are used. The collector calls public HTTPS open-data endpoints with the system certificate store
